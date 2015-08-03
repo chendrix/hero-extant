@@ -5,11 +5,13 @@ import Random exposing (Seed)
 
 type alias Tile =
     { elevation : Float
+    , temperature : Float
     }
 
 tile : Tile
 tile =
     { elevation = 0.0
+    , temperature = 0.0
     }
 
 initialMap = Matrix.matrix 100 100 (always tile)

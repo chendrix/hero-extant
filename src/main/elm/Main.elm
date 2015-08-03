@@ -49,7 +49,7 @@ render (mapWidth,mapHeight) mapper address world =
                 belowSeaLevel = Elevation.belowSeaLevel world tile
                 elevation = tile.elevation
             in
-                if | belowSeaLevel -> rgb 0 0 (floor <| 255 * (0.5 * (elevation) + 0.5))
+                if | belowSeaLevel  -> rgb 0 0 (floor <| 255 * (0.5 * (elevation) + 0.5))
                    | otherwise -> rgb (floor <| 255 * 0.75 * elevation) (floor <| 255 * 0.75 * elevation) 0
 
         cell tile =
