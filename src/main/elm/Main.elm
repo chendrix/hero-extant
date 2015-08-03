@@ -13,6 +13,7 @@ import Result
 import String
 
 import World exposing (World, Tile, defaultSeaLevel, initialMap, world)
+import Random
 import Temperature
 import Elevation
 import Native.Now as Now
@@ -27,12 +28,12 @@ main =
 
 
 model =
-    world <| Random.initialSeed Native.Now.loadTime
+    world <| Native.Now.loadTime
 
 
 generateMap : World -> Matrix Tile
 generateMap world =
-    (world, world.seed, initialMap)
+    (world, Random.initialSeed world.seed, initialMap)
     |> Elevation.generate
     |> Temperature.generate
     |> (\(_, _, map) -> map)
@@ -45,6 +46,19 @@ view address model =
             (render (512,512) generateMap address model)
             |> Html.fromElement
 
+        seedInput =
+            input
+                [ id "update-seed"
+                , type' "number"
+                , value (model.seed |> toString)
+                , onInput address (\strVal ->
+                    String.toInt strVal
+                    |> Result.toMaybe
+                    |> Maybe.withDefault model.seed
+                    |> NewSeed
+                    )
+                ]
+                []
         seaLevelSlider =
             input
                 [ id "update-seaLevel"
@@ -63,7 +77,8 @@ view address model =
                 []
     in
         div []
-            [ seaLevelSlider
+            [ seedInput
+            , seaLevelSlider
             , map
             ]
 
@@ -102,7 +117,7 @@ render (mapWidth,mapHeight) mapper address world =
 
 
 type Action
-    = NewSeed Seed
+    = NewSeed Int
     | SeaLevel Float
 
 
