@@ -9,12 +9,17 @@ import Maybe exposing (map, withDefault, andThen, Maybe (..) )
 import Array
 import Time
 
+import Result
+import String
+
 import World exposing (World, Tile, defaultSeaLevel, initialMap, world)
 import Temperature
 import Elevation
 import Native.Now as Now
 
-import Html
+import Html exposing (..)
+import Html.Attributes exposing (..)
+import Html.Events exposing (..)
 import StartApp
 
 main =
@@ -33,9 +38,38 @@ generateMap world =
     |> (\(_, _, map) -> map)
 
 
+view : Signal.Address Action -> World -> Html
 view address model =
-    (render (512,512) generateMap address model)
-    |> Html.fromElement
+    let
+        map =
+            (render (512,512) generateMap address model)
+            |> Html.fromElement
+
+        seaLevelSlider =
+            input
+                [ id "update-seaLevel"
+                , type' "range"
+                , value (model.seaLevel |> toString)
+                , onInput address (\strVal ->
+                    String.toFloat strVal
+                    |> Result.toMaybe
+                    |> Maybe.withDefault model.seaLevel
+                    |> SeaLevel
+                    )
+                , Html.Attributes.min "0"
+                , Html.Attributes.max "1"
+                , Html.Attributes.step "0.05"
+                ]
+                []
+    in
+        div []
+            [ seaLevelSlider
+            , map
+            ]
+
+onInput : Signal.Address a -> (String -> a) -> Attribute
+onInput address contentToValue =
+    on "input" targetValue (\str -> Signal.message address (contentToValue str))
 
 
 render : (Int,Int) -> (World -> Matrix Tile)-> Signal.Address Action  -> World -> Element
