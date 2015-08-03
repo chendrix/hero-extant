@@ -10,6 +10,7 @@ import Array
 import Time
 
 import World exposing (World, Tile, defaultSeaLevel, initialMap, world)
+import Temperature
 import Elevation
 import Native.Now as Now
 
@@ -28,6 +29,7 @@ generateMap : World -> Matrix Tile
 generateMap world =
     (world, world.seed, initialMap)
     |> Elevation.generate
+    |> Temperature.generate
     |> (\(_, _, map) -> map)
 
 
@@ -48,9 +50,11 @@ render (mapWidth,mapHeight) mapper address world =
             let
                 belowSeaLevel = Elevation.belowSeaLevel world tile
                 elevation = tile.elevation
+                c val = floor <| 255 * val
             in
-                if | belowSeaLevel  -> rgb 0 0 (floor <| 255 * (0.5 * (elevation) + 0.5))
-                   | otherwise -> rgb (floor <| 255 * 0.75 * elevation) (floor <| 255 * 0.75 * elevation) 0
+                if  | belowSeaLevel -> rgb 0 0 (c <| 0.5 * (elevation) + 0.5)
+                    | tile.temperature < 0.15 -> rgb (c <| 0.25 + 0.75 * elevation) (c <| 0.25 + 0.75 * elevation) (c <| 0.25 + 0.75 * elevation)
+                    | otherwise -> rgb (floor <| 255 * 0.75 * elevation) (floor <| 255 * 0.75 * elevation) 0
 
         cell tile =
             [ C.filled (colorFor tile) box ]
