@@ -9,7 +9,7 @@ import Maybe exposing (map, withDefault, andThen, Maybe (..) )
 import Array
 import Time
 
-import World exposing (World, Tile, defaultSeaLevel, initialMap)
+import World exposing (World, Tile, defaultSeaLevel, initialMap, world)
 import Elevation
 import Native.Now as Now
 
@@ -21,53 +21,43 @@ main =
 
 
 model =
-    generateWorld <| Random.initialSeed Native.Now.loadTime
+    world <| Random.initialSeed Native.Now.loadTime
 
 
-generateWorld : Seed -> World
-generateWorld seed =
-    { seaLevel = defaultSeaLevel
-    , map = generateMap seed |> fst
-    }
-
-
-generateMap : Seed -> (Matrix Tile, Seed)
-generateMap seed =
-    initialMap
-    |> (flip (,)) seed
+generateMap : World -> Matrix Tile
+generateMap world =
+    (world, world.seed, initialMap)
     |> Elevation.generate
+    |> (\(_, _, map) -> map)
 
 
 view address model =
-    (render (512,512) .elevation address model)
+    (render (512,512) generateMap address model)
     |> Html.fromElement
 
 
-render : (Int,Int) -> (Tile -> Float) -> Signal.Address Action -> World -> Element
-render (mapWidth,mapHeight) extract address world =
+render : (Int,Int) -> (World -> Matrix Tile)-> Signal.Address Action  -> World -> Element
+render (mapWidth,mapHeight) mapper address world =
     let
-        map = world.map
+        map = mapper world
         boxWidth = (toFloat mapWidth) / (toFloat <| Matrix.colCount map)
         boxHeight = (toFloat mapHeight) / (toFloat <| Matrix.rowCount map)
         box = C.rect boxWidth boxHeight
 
-        colorFor elevation =
+        colorFor tile =
             let
-                belowSeaLevel =
-                    elevation < world.seaLevel
-
-                elevationDiff =
-                    elevation - world.seaLevel |> abs
+                belowSeaLevel = Elevation.belowSeaLevel world tile
+                elevation = tile.elevation
             in
                 if | belowSeaLevel -> rgb 0 0 (floor <| 255 * (0.5 * (elevation) + 0.5))
                    | otherwise -> rgb (floor <| 255 * 0.75 * elevation) (floor <| 255 * 0.75 * elevation) 0
 
-        cell value =
-            [ C.filled (colorFor value) box ]
+        cell tile =
+            [ C.filled (colorFor tile) box ]
             |> C.collage (floor boxWidth) (floor boxHeight)
     in
         map
-        |> Matrix.map (extract >> cell)
+        |> Matrix.map cell
         |> Matrix.toList
         |> List.map (flow right)
         |> flow down
@@ -82,7 +72,7 @@ update : Action -> World -> World
 update msg model =
     case msg of
         NewSeed seed ->
-            { model | map <- generateMap seed |> fst }
+            { model | seed <- seed }
 
-        SeaLevel newSeaLevel ->
-            { model | seaLevel <- newSeaLevel }
+        SeaLevel seaLevel ->
+            { model | seaLevel <- seaLevel }

@@ -1,8 +1,17 @@
-module Elevation (generate) where
+module Elevation (generate, belowSeaLevel, elevationAboveSeaLevel) where
 
 import Matrix exposing (Matrix)
 import Random exposing (Seed)
 import World exposing (Tile, World)
+
+
+belowSeaLevel : World -> Tile -> Bool
+belowSeaLevel world tile =
+    tile.elevation < world.seaLevel
+
+elevationAboveSeaLevel : World -> Tile -> Float
+elevationAboveSeaLevel world tile =
+    tile.elevation - world.seaLevel
 
 all : List (Maybe a) -> Maybe (List a)
 all =
@@ -17,16 +26,16 @@ all =
     ) (Just [])
 
 
-generate : (Matrix Tile, Seed) -> (Matrix Tile, Seed)
-generate (input, seed) =
+generate : (World, Seed, Matrix Tile) -> (World, Seed, Matrix Tile)
+generate (world, seed, input) =
     let
         roughness = 100.0 / 20
         elevation = 100.0 / 200
         w = Matrix.colCount input
         h = Matrix.rowCount input
 
-        divideWorld : Int -> Int -> Int -> Int -> Float -> Float -> (Matrix { a | elevation : Float },Seed) -> (Matrix { a | elevation : Float },Seed)
-        divideWorld x1 y1 x2 y2 roughness midinit (map,seed) =
+        divideWorld : Int -> Int -> Int -> Int -> Float -> Float -> (Seed,Matrix { a | elevation : Float }) -> (Seed,Matrix { a | elevation : Float })
+        divideWorld x1 y1 x2 y2 roughness midinit (seed, map) =
             let
                 w' = x2 - x1
                 h' = y2 - y1
@@ -65,14 +74,14 @@ generate (input, seed) =
                     |> calculateMidpoint 0 (x2,midy) [ (x2,y1), (x2,y2) ]
                     |> calculateMidpoint d' (midx,midy) [ (x1,y1), (x1,y2), (x2,y1), (x2,y2) ]
                     |> (\map' -> if midinit > -1 then setElevation (midx,midy) midinit map' else map')
-                    |> (flip (,)) seed'
+                    |> (,) seed'
                     |> divideWorld x1 y1 midx midy roughness -1
                     |> divideWorld midx y1 x2 midy roughness -1
                     |> divideWorld x1 midy midx y2 roughness -1
                     |> divideWorld midx midy x2 y2 roughness -1
 
-                else (map,seed')
+                else (seed',map)
     in
-        input
-        |> (flip (,)) seed
+        (seed, input)
         |> divideWorld 0 0 w h roughness elevation
+        |> (\(seed', map') -> (world, seed', map'))
